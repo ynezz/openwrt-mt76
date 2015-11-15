@@ -340,6 +340,8 @@ struct mt76_dev *mt76_alloc_device(struct device *pdev);
 int mt76_register_device(struct mt76_dev *dev);
 void mt76_init_debugfs(struct mt76_dev *dev);
 
+int mt76x2_init_device(struct mt76_dev *dev);
+
 irqreturn_t mt76_irq_handler(int irq, void *dev_instance);
 void mt76_phy_power_on(struct mt76_dev *dev);
 int mt76_init_hardware(struct mt76_dev *dev);
