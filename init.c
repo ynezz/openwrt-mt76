@@ -499,12 +499,7 @@ int mt76_init_hardware(struct mt76_dev *dev)
 	int ret;
 
 	dev->beacon_offsets = beacon_offsets;
-	tasklet_init(&dev->pre_tbtt_tasklet, mt76_pre_tbtt_tasklet,
-		     (unsigned long) dev);
-
 	dev->chainmask = 0x202;
-
-	dev->slottime = 9;
 
 	val = mt76_rr(dev, MT_WPDMA_GLO_CFG);
 	val &= MT_WPDMA_GLO_CFG_DMA_BURST_SIZE |
@@ -793,6 +788,12 @@ int mt76_init_device(struct mt76_dev *dev)
 		return ret;
 
 	dev_printk(KERN_INFO, dev->dev, "ASIC revision: %08x\n", dev->rev);
+
+	tasklet_init(&dev->pre_tbtt_tasklet, mt76_pre_tbtt_tasklet,
+		     (unsigned long) dev);
+
+	dev->slottime = 9;
+
 	return 0;
 }
 
