@@ -437,6 +437,17 @@ mt76x2_init_hardware(struct mt76_dev *dev)
 	mt76_mac_stop(dev, false);
 	dev->rxfilter = mt76_rr(dev, MT_RX_FILTR_CFG);
 
+	/* Fix up ASPM configuration */
+
+	/* RG_SSUSB_G1_CDR_BIR_LTR = 0x9 */
+	mt76_rmw_field(dev, 0x15a10, 0x1f << 16, 0x9);
+
+	/* RG_SSUSB_G1_CDR_BIC_LTR = 0xf */
+	mt76_rmw_field(dev, 0x15a0c, 0xf << 28, 0xf);
+
+	/* RG_SSUSB_CDR_BR_PE1D = 0x3 */
+	mt76_rmw_field(dev, 0x15c58, 0x3 << 6, 0x3);
+
 	return 0;
 }
 
