@@ -576,20 +576,3 @@ int mt76_mac_skb_tx_overhead(struct mt76_dev *dev, struct sk_buff *skb)
 	return overhead;
 }
 
-
-void mt76_mac_work(struct work_struct *work)
-{
-	struct mt76_dev *dev = container_of(work, struct mt76_dev,
-					    mac_work.work);
-	int i, idx;
-
-	for (i = 0, idx = 0; i < 16; i++) {
-		u32 val = mt76_rr(dev, MT_TX_AGG_CNT(i));
-		dev->aggr_stats[idx++] += val & 0xffff;
-		dev->aggr_stats[idx++] += val >> 16;
-	}
-
-	ieee80211_queue_delayed_work(dev->hw, &dev->mac_work,
-				     MT_CALIBRATE_INTERVAL);
-
-}

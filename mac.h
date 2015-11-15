@@ -193,8 +193,6 @@ void mt76_mac_queue_txdone(struct mt76_dev *dev, struct sk_buff *skb,
 void mt76_mac_poll_tx_status(struct mt76_dev *dev, bool irq);
 void mt76_mac_process_tx_status_fifo(struct mt76_dev *dev);
 
-void mt76_mac_work(struct work_struct *work);
-
 void mt76_skb_set_moredata(struct sk_buff *skb, bool enable);
 
 #endif

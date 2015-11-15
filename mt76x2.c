@@ -451,6 +451,23 @@ mt76x2_init_hardware(struct mt76_dev *dev)
 	return 0;
 }
 
+static void
+mt76x2_mac_work(struct work_struct *work)
+{
+	struct mt76_dev *dev = container_of(work, struct mt76_dev,
+					    mac_work.work);
+	int i, idx;
+
+	for (i = 0, idx = 0; i < 16; i++) {
+		u32 val = mt76_rr(dev, MT_TX_AGG_CNT(i));
+		dev->aggr_stats[idx++] += val & 0xffff;
+		dev->aggr_stats[idx++] += val >> 16;
+	}
+
+	ieee80211_queue_delayed_work(dev->hw, &dev->mac_work,
+				     MT_CALIBRATE_INTERVAL);
+}
+
 static const struct mt76_chip_ops chip_ops = {
 	.init_hardware = mt76x2_init_hardware,
 };
@@ -470,6 +487,7 @@ int mt76x2_init_device(struct mt76_dev *dev)
 
 	kfifo_init(&dev->txstatus_fifo, status_fifo, fifo_size);
 
+	INIT_DELAYED_WORK(&dev->mac_work, mt76x2_mac_work);
 	tasklet_init(&dev->pre_tbtt_tasklet, mt76x2_pre_tbtt_tasklet,
 		     (unsigned long) dev);
 

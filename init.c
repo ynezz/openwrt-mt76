@@ -441,7 +441,6 @@ int mt76_register_device(struct mt76_dev *dev)
 
 	INIT_LIST_HEAD(&dev->txwi_cache);
 	INIT_DELAYED_WORK(&dev->cal_work, mt76_phy_calibrate);
-	INIT_DELAYED_WORK(&dev->mac_work, mt76_mac_work);
 
 	ret = ieee80211_register_hw(hw);
 	if (ret)
