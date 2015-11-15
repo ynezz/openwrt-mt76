@@ -387,8 +387,6 @@ void mt76_tx_complete(struct mt76_dev *dev, struct sk_buff *skb);
 
 void mt76_kick_queue(struct mt76_dev *dev, struct mt76_queue *q);
 
-void mt76_pre_tbtt_tasklet(unsigned long data);
-
 void mt76_txq_init(struct mt76_dev *dev, struct ieee80211_txq *txq);
 void mt76_wake_tx_queue(struct ieee80211_hw *hw, struct ieee80211_txq *txq);
 void mt76_txq_remove(struct mt76_dev *dev, struct ieee80211_txq *txq);

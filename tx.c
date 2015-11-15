@@ -13,12 +13,6 @@
 
 #include "mt76.h"
 
-struct beacon_bc_data {
-	struct mt76_dev *dev;
-	struct sk_buff_head q;
-	struct sk_buff *tail[8];
-};
-
 void mt76_tx(struct ieee80211_hw *hw, struct ieee80211_tx_control *control,
 	     struct sk_buff *skb)
 {
@@ -76,103 +70,6 @@ void mt76_tx_complete(struct mt76_dev *dev, struct sk_buff *skb)
 		ieee80211_wake_queue(dev->hw, qid);
 }
 
-static void
-mt76_update_beacon_iter(void *priv, u8 *mac, struct ieee80211_vif *vif)
-{
-	struct mt76_dev *dev = (struct mt76_dev *) priv;
-	struct mt76_vif *mvif = (struct mt76_vif *) vif->drv_priv;
-	struct ieee80211_tx_info *info;
-	struct sk_buff *skb = NULL;
-
-	if (!(dev->beacon_mask & BIT(mvif->idx)))
-		return;
-
-	skb = ieee80211_beacon_get(dev->hw, vif);
-	if (!skb)
-		return;
-
-	info = IEEE80211_SKB_CB(skb);
-	info->flags |= IEEE80211_TX_CTL_ASSIGN_SEQ;
-	mt76_mac_set_beacon(dev, mvif->idx, skb);
-}
-
-static void
-mt76_skb_set_moredata(struct sk_buff *skb, bool enable)
-{
-	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
-
-	if (enable)
-		hdr->frame_control |= cpu_to_le16(IEEE80211_FCTL_MOREDATA);
-	else
-		hdr->frame_control &= ~cpu_to_le16(IEEE80211_FCTL_MOREDATA);
-}
-
-static void
-mt76_add_buffered_bc(void *priv, u8 *mac, struct ieee80211_vif *vif)
-{
-	struct beacon_bc_data *data = priv;
-	struct mt76_dev *dev = data->dev;
-	struct mt76_vif *mvif = (struct mt76_vif *) vif->drv_priv;
-	struct ieee80211_tx_info *info;
-	struct sk_buff *skb;
-
-	if (!(dev->beacon_mask & BIT(mvif->idx)))
-		return;
-
-	skb = ieee80211_get_buffered_bc(dev->hw, vif);
-	if (!skb)
-		return;
-
-	info = IEEE80211_SKB_CB(skb);
-	info->control.vif = vif;
-	info->flags |= IEEE80211_TX_CTL_ASSIGN_SEQ;
-	mt76_skb_set_moredata(skb, true);
-	__skb_queue_tail(&data->q, skb);
-	data->tail[mvif->idx] = skb;
-}
-
-void mt76_pre_tbtt_tasklet(unsigned long arg)
-{
-	struct mt76_dev *dev = (struct mt76_dev *) arg;
-	struct mt76_queue *q = &dev->q_tx[MT_TXQ_PSD];
-	struct beacon_bc_data data = {};
-	struct sk_buff *skb;
-	int i, nframes;
-
-	data.dev = dev;
-	__skb_queue_head_init(&data.q);
-
-	ieee80211_iterate_active_interfaces_atomic(dev->hw,
-		IEEE80211_IFACE_ITER_RESUME_ALL,
-		mt76_update_beacon_iter, dev);
-
-	do {
-		nframes = skb_queue_len(&data.q);
-		ieee80211_iterate_active_interfaces_atomic(dev->hw,
-			IEEE80211_IFACE_ITER_RESUME_ALL,
-			mt76_add_buffered_bc, &data);
-	} while (nframes != skb_queue_len(&data.q));
-
-	if (!nframes)
-		return;
-
-	for (i = 0; i < ARRAY_SIZE(data.tail); i++) {
-		if (!data.tail[i])
-			continue;
-
-		mt76_skb_set_moredata(data.tail[i], false);
-	}
-
-	spin_lock_bh(&q->lock);
-	while ((skb = __skb_dequeue(&data.q)) != NULL) {
-		struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
-		struct ieee80211_vif *vif = info->control.vif;
-		struct mt76_vif *mvif = (struct mt76_vif *) vif->drv_priv;
-
-		mt76_tx_queue_skb(dev, q, skb, &mvif->group_wcid, NULL);
-	}
-	spin_unlock_bh(&q->lock);
-}
 
 static int
 mt76_txq_get_qid(struct ieee80211_txq *txq)
@@ -215,6 +112,17 @@ mt76_check_agg_ssn(struct mt76_txq *mtxq, struct sk_buff *skb)
 		return;
 
 	mtxq->agg_ssn = le16_to_cpu(hdr->seq_ctrl) + 0x10;
+}
+
+void
+mt76_skb_set_moredata(struct sk_buff *skb, bool enable)
+{
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
+
+	if (enable)
+		hdr->frame_control |= cpu_to_le16(IEEE80211_FCTL_MOREDATA);
+	else
+		hdr->frame_control &= ~cpu_to_le16(IEEE80211_FCTL_MOREDATA);
 }
 
 static void

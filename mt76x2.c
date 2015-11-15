@@ -241,7 +241,7 @@ mt76x2_mac_reset(struct mt76_dev *dev, bool hard)
 
 	for (i = 0; i < 8; i++) {
 		mt76_mac_set_bssid(dev, i, null_addr);
-		mt76_mac_set_beacon(dev, i, NULL);
+		mt76x2_mac_set_beacon(dev, i, NULL);
 	}
 
 	for (i = 0; i < 16; i++)
@@ -469,6 +469,9 @@ int mt76x2_init_device(struct mt76_dev *dev)
 		return -ENOMEM;
 
 	kfifo_init(&dev->txstatus_fifo, status_fifo, fifo_size);
+
+	tasklet_init(&dev->pre_tbtt_tasklet, mt76x2_pre_tbtt_tasklet,
+		     (unsigned long) dev);
 
 	return 0;
 }

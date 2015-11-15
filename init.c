@@ -367,9 +367,6 @@ int mt76_init_device(struct mt76_dev *dev)
 
 	dev_printk(KERN_INFO, dev->dev, "ASIC revision: %08x\n", dev->rev);
 
-	tasklet_init(&dev->pre_tbtt_tasklet, mt76_pre_tbtt_tasklet,
-		     (unsigned long) dev);
-
 	dev->slottime = 9;
 
 	return 0;

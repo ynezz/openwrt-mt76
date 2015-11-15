@@ -174,7 +174,8 @@ mt76_bss_info_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 
 	if (changed & BSS_CHANGED_BEACON_ENABLED) {
 		tasklet_disable(&dev->pre_tbtt_tasklet);
-		mt76_mac_set_beacon_enable(dev, mvif->idx, info->enable_beacon);
+		if (IS_76X2(dev))
+			mt76x2_mac_set_beacon_enable(dev, mvif->idx, info->enable_beacon);
 		tasklet_enable(&dev->pre_tbtt_tasklet);
 	}
 

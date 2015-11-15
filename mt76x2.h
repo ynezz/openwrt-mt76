@@ -516,4 +516,6 @@ struct mt76_wcid_key {
 	u8 rx_mic[8];
 } __packed __aligned(4);
 
+void mt76x2_pre_tbtt_tasklet(unsigned long arg);
+
 #endif
