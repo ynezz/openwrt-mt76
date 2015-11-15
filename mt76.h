@@ -48,6 +48,14 @@
 #include "util.h"
 #include "mac.h"
 
+enum mt76_chip {
+	CHIP_MT76x2,
+	CHIP_MT7603
+};
+
+#define IS_76X2(_dev) ((_dev)->type == CHIP_MT76x2)
+#define IS_7603(_dev) ((_dev)->type == CHIP_MT7603)
+
 struct mt76_queue_entry {
 	struct sk_buff *skb;
 	union {
@@ -177,6 +185,7 @@ struct mt76_dev {
 
 	struct mutex mutex;
 
+	enum mt76_chip type;
 	const struct mt76_dma_ops *dma_ops;
 
 	const u16 *beacon_offsets;

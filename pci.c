@@ -19,7 +19,8 @@
 #include "trace.h"
 
 static const struct pci_device_id mt76pci_device_table[] = {
-	{ PCI_DEVICE(0x14c3, 0x7662) },
+	{ PCI_DEVICE(0x14c3, 0x7662), .driver_data = CHIP_MT76x2 },
+	{ PCI_DEVICE(0x14c3, 0x7603), .driver_data = CHIP_MT7603 },
 	{ },
 };
 
@@ -75,9 +76,15 @@ mt76pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!dev)
 		return -ENOMEM;
 
+	dev->type = id->driver_data;
 	dev->regs = pcim_iomap_table(pdev)[0];
 
 	pci_set_drvdata(pdev, dev);
+
+	if (IS_7603(dev)) {
+		ret = -EINVAL;
+		goto error;
+	}
 
 	dev->rev = mt76_rr(dev, MT_ASIC_VERSION);
 	dev_printk(KERN_INFO, dev->dev, "ASIC revision: %08x\n", dev->rev);
