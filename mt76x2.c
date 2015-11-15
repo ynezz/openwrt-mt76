@@ -14,7 +14,17 @@
 
 int mt76x2_init_device(struct mt76_dev *dev)
 {
+	void *status_fifo;
+	int fifo_size;
+
 	dev->rev = mt76_rr(dev, MT_ASIC_VERSION);
+
+	fifo_size = roundup_pow_of_two(32 * sizeof(struct mt76_tx_status));
+	status_fifo = devm_kzalloc(dev->dev, fifo_size, GFP_KERNEL);
+	if (!status_fifo)
+		return -ENOMEM;
+
+	kfifo_init(&dev->txstatus_fifo, status_fifo, fifo_size);
 
 	return 0;
 }

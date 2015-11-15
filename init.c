@@ -784,16 +784,7 @@ int mt76_register_device(struct mt76_dev *dev)
 {
 	struct ieee80211_hw *hw = dev->hw;
 	struct wiphy *wiphy = hw->wiphy;
-	void *status_fifo;
-	int fifo_size;
 	int i, ret;
-
-	fifo_size = roundup_pow_of_two(32 * sizeof(struct mt76_tx_status));
-	status_fifo = devm_kzalloc(dev->dev, fifo_size, GFP_KERNEL);
-	if (!status_fifo)
-		return -ENOMEM;
-
-	kfifo_init(&dev->txstatus_fifo, status_fifo, fifo_size);
 
 	ret = mt76_init_hardware(dev);
 	if (ret)
