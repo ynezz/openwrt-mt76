@@ -161,6 +161,10 @@ struct mt76_rate_power {
 	};
 };
 
+struct mt76_chip_ops {
+	int (*init_hardware)(struct mt76_dev *dev);
+};
+
 struct mt76_dma_ops {
 	int (*queue_skb)(struct mt76_dev *dev, struct mt76_queue *q,
 			 struct sk_buff *skb, struct mt76_wcid *wcid,
@@ -186,6 +190,7 @@ struct mt76_dev {
 	struct mutex mutex;
 
 	enum mt76_chip type;
+	const struct mt76_chip_ops *ops;
 	const struct mt76_dma_ops *dma_ops;
 
 	const u16 *beacon_offsets;
@@ -343,9 +348,10 @@ void mt76_init_debugfs(struct mt76_dev *dev);
 int mt76_init_device(struct mt76_dev *dev);
 int mt76x2_init_device(struct mt76_dev *dev);
 
+#define mt76_init_hardware(dev) dev->ops->init_hardware(dev)
+
 irqreturn_t mt76_irq_handler(int irq, void *dev_instance);
 void mt76_phy_power_on(struct mt76_dev *dev);
-int mt76_init_hardware(struct mt76_dev *dev);
 void mt76_stop_hardware(struct mt76_dev *dev);
 int mt76_eeprom_init(struct mt76_dev *dev);
 int mt76_apply_calibration_data(struct mt76_dev *dev, int channel);
