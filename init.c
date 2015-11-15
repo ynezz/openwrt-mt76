@@ -780,6 +780,22 @@ static const struct ieee80211_iface_combination if_comb[] = {
 	}
 };
 
+int mt76_init_device(struct mt76_dev *dev)
+{
+	int ret;
+
+	if (IS_76X2(dev))
+		ret = mt76x2_init_device(dev);
+	else
+		ret = -EINVAL;
+
+	if (ret)
+		return ret;
+
+	dev_printk(KERN_INFO, dev->dev, "ASIC revision: %08x\n", dev->rev);
+	return 0;
+}
+
 int mt76_register_device(struct mt76_dev *dev)
 {
 	struct ieee80211_hw *hw = dev->hw;

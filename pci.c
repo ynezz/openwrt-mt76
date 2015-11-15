@@ -81,15 +81,9 @@ mt76pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	pci_set_drvdata(pdev, dev);
 
-	if (IS_76X2(dev))
-		mt76x2_init_device(dev);
-
-	if (IS_7603(dev)) {
-		ret = -EINVAL;
+	ret = mt76_init_device(dev);
+	if (ret)
 		goto error;
-	}
-
-	dev_printk(KERN_INFO, dev->dev, "ASIC revision: %08x\n", dev->rev);
 
 	ret = devm_request_irq(dev->dev, pdev->irq, mt76_irq_handler,
 			       IRQF_SHARED, KBUILD_MODNAME, dev);
