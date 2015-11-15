@@ -12,6 +12,7 @@
  */
 
 #include "mt76.h"
+#include "mt76x2.h"
 
 static int
 mt76_start(struct ieee80211_hw *hw)

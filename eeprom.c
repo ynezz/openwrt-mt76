@@ -15,6 +15,7 @@
 #include <asm/unaligned.h>
 #include "mt76.h"
 #include "eeprom.h"
+#include "mt76x2.h"
 #include "of.h"
 
 #define EE_FIELD(_name, _value) [MT_EE_##_name] = (_value) | 1

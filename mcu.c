@@ -19,6 +19,7 @@
 #include "mcu.h"
 #include "dma.h"
 #include "eeprom.h"
+#include "mt76x2.h"
 
 struct mt76_fw_header {
 	__le32 ilm_len;

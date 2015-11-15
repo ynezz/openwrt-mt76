@@ -13,6 +13,7 @@
 
 #include <linux/delay.h>
 #include "mt76.h"
+#include "mt76x2.h"
 #include "trace.h"
 
 bool mt76_poll(struct mt76_dev *dev, u32 offset, u32 mask, u32 val,

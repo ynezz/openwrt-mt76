@@ -15,6 +15,7 @@
 #include "mt76.h"
 #include "mcu.h"
 #include "eeprom.h"
+#include "mt76x2.h"
 
 static bool
 mt76_phy_rf_op(struct mt76_dev *dev, bool idx, u16 offset, bool write)

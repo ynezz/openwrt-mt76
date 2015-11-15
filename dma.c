@@ -12,6 +12,7 @@
  */
 
 #include "mt76.h"
+#include "mt76x2.h"
 #include "dma.h"
 
 struct mt76_txwi_cache {

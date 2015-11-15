@@ -20,8 +20,6 @@
 #define GENMASK(h, l)       (((U32_C(1) << ((h) - (l) + 1)) - 1) << (l))
 #endif
 
-#include "mt76x2.h"
-
 struct mt76_queue_regs {
 	u32 desc_base;
 	u32 ring_size;

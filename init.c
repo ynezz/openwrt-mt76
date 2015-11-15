@@ -15,6 +15,7 @@
 #include "mt76.h"
 #include "eeprom.h"
 #include "mcu.h"
+#include "mt76x2.h"
 
 static bool
 wait_for_wpdma(struct mt76_dev *dev)
