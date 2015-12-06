@@ -115,17 +115,3 @@ irqreturn_t mt76_irq_handler(int irq, void *dev_instance)
 
 	return IRQ_HANDLED;
 }
-
-int mt76_set_channel(struct mt76_dev *dev, struct cfg80211_chan_def *chandef)
-{
-	int ret;
-
-	tasklet_disable(&dev->pre_tbtt_tasklet);
-	cancel_delayed_work_sync(&dev->cal_work);
-
-	ret = mt76_phy_set_channel(dev, chandef);
-	tasklet_enable(&dev->pre_tbtt_tasklet);
-
-	return ret;
-}
-

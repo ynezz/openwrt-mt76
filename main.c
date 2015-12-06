@@ -116,8 +116,15 @@ mt76_config(struct ieee80211_hw *hw, u32 changed)
 
 	if (changed & IEEE80211_CONF_CHANGE_CHANNEL) {
 		ieee80211_stop_queues(hw);
+
+		tasklet_disable(&dev->pre_tbtt_tasklet);
+		cancel_delayed_work_sync(&dev->cal_work);
+
 		ret = mt76_set_channel(dev, &hw->conf.chandef);
-		ieee80211_wake_queues(hw);
+		if (!ret) {
+			tasklet_enable(&dev->pre_tbtt_tasklet);
+			ieee80211_wake_queues(hw);
+		}
 	}
 
 	mutex_unlock(&dev->mutex);

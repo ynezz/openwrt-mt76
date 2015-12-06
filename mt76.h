@@ -362,8 +362,7 @@ int mt76_eeprom_init(struct mt76_dev *dev);
 int mt76_apply_calibration_data(struct mt76_dev *dev, int channel);
 void mt76_set_tx_ackto(struct mt76_dev *dev);
 
-int mt76_set_channel(struct mt76_dev *dev, struct cfg80211_chan_def *chandef);
-#define mt76_phy_set_channel(dev, cdef) dev->ops->set_channel(dev, cdef)
+#define mt76_set_channel(dev, cdef) dev->ops->set_channel(dev, cdef)
 int mt76_phy_get_rssi(struct mt76_dev *dev, s8 rssi, int chain);
 #define mt76_set_txpower(dev) dev->ops->set_txpower(dev)
 
