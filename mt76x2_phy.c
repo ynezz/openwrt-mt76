@@ -149,7 +149,7 @@ mt76_get_max_power(struct mt76_rate_power *r)
 	return ret;
 }
 
-void mt76_phy_set_txpower(struct mt76_dev *dev)
+void mt76x2_phy_set_txpower(struct mt76_dev *dev)
 {
 	enum nl80211_chan_width width = dev->chandef.width;
 	struct mt76_tx_power_info txp;
@@ -253,7 +253,7 @@ mt76_phy_channel_calibrate(struct mt76_dev *dev, bool mac_stopped)
 		mt76_phy_tssi_init_cal(dev);
 
 	if (!mac_stopped)
-		mt76_mac_stop(dev, false);
+		mt76x2_mac_stop(dev, false);
 
 	if (is_5ghz)
 		mt76_mcu_calibrate(dev, MCU_CAL_LC, 0);
@@ -265,7 +265,7 @@ mt76_phy_channel_calibrate(struct mt76_dev *dev, bool mac_stopped)
 	mt76_mcu_calibrate(dev, MCU_CAL_TX_SHAPING, 0);
 
 	if (!mac_stopped)
-		mt76_mac_resume(dev);
+		mt76x2_mac_resume(dev);
 
 	mt76_apply_gain_adj(dev);
 
@@ -489,8 +489,8 @@ mt76_phy_update_channel_gain(struct mt76_dev *dev)
 		val | MT76_SET(MT_BBP_AGC_GAIN, gain[1] - gain_delta));
 }
 
-int mt76_phy_set_channel(struct mt76_dev *dev,
-			 struct cfg80211_chan_def *chandef)
+int mt76x2_phy_set_channel(struct mt76_dev *dev,
+			   struct cfg80211_chan_def *chandef)
 {
 	struct ieee80211_channel *chan = chandef->chan;
 	bool scan = test_bit(MT76_SCANNING, &dev->state);
@@ -524,6 +524,8 @@ int mt76_phy_set_channel(struct mt76_dev *dev,
 	int freq, freq1;
 	int ret;
 	u8 sifs = 13;
+
+	mt76x2_mac_stop(dev, true);
 
 	dev->chandef = *chandef;
 	dev->cal.channel_cal_done = false;
@@ -561,7 +563,7 @@ int mt76_phy_set_channel(struct mt76_dev *dev,
 	mt76_read_rx_gain(dev);
 	mt76_phy_set_txpower_regs(dev, band);
 	mt76_configure_tx_delay(dev, band, bw);
-	mt76_phy_set_txpower(dev);
+	mt76x2_phy_set_txpower(dev);
 
 	mt76_set_rx_chains(dev);
 	mt76_phy_set_band(dev, chan->band, ch_group_index & 1);
@@ -613,7 +615,7 @@ int mt76_phy_set_channel(struct mt76_dev *dev,
 	mt76_wr(dev, MT_TXOP_CTRL_CFG, 0x04101B3F);
 
 	if (scan)
-		return 0;
+		goto out;
 
 	dev->cal.low_gain = -1;
 	mt76_phy_channel_calibrate(dev, true);
@@ -621,6 +623,9 @@ int mt76_phy_set_channel(struct mt76_dev *dev,
 
 	ieee80211_queue_delayed_work(dev->hw, &dev->cal_work,
 				     MT_CALIBRATE_INTERVAL);
+
+out:
+	mt76x2_mac_resume(dev);
 
 	return 0;
 }
@@ -694,7 +699,7 @@ mt76_phy_temp_compensate(struct mt76_dev *dev)
 		       db_diff * 2);
 }
 
-void mt76_phy_calibrate(struct work_struct *work)
+void mt76x2_phy_calibrate(struct work_struct *work)
 {
 	struct mt76_dev *dev;
 
@@ -707,7 +712,7 @@ void mt76_phy_calibrate(struct work_struct *work)
 				     MT_CALIBRATE_INTERVAL);
 }
 
-int mt76_phy_start(struct mt76_dev *dev)
+int mt76x2_phy_start(struct mt76_dev *dev)
 {
 	int ret;
 

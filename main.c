@@ -22,22 +22,23 @@ mt76_start(struct ieee80211_hw *hw)
 
 	mutex_lock(&dev->mutex);
 
-	ret = mt76_mac_start(dev);
-	if (ret)
-		goto out;
+	napi_enable(&dev->napi);
 
-	ret = mt76_phy_start(dev);
-	if (ret)
+	ret = mt76_hw_start(dev);
+	if (ret) {
+		napi_disable(&dev->napi);
+		mt76_hw_stop(dev);
 		goto out;
+	}
 
 	ieee80211_queue_delayed_work(dev->hw, &dev->mac_work,
 				     MT_CALIBRATE_INTERVAL);
-	napi_enable(&dev->napi);
 
 	set_bit(MT76_STATE_RUNNING, &dev->state);
 
 out:
 	mutex_unlock(&dev->mutex);
+
 	return ret;
 }
 
@@ -49,7 +50,9 @@ mt76_stop(struct ieee80211_hw *hw)
 	mutex_lock(&dev->mutex);
 	napi_disable(&dev->napi);
 	clear_bit(MT76_STATE_RUNNING, &dev->state);
-	mt76_stop_hardware(dev);
+	cancel_delayed_work_sync(&dev->cal_work);
+	cancel_delayed_work_sync(&dev->mac_work);
+	mt76_hw_stop(dev);
 	mutex_unlock(&dev->mutex);
 }
 
@@ -108,7 +111,7 @@ mt76_config(struct ieee80211_hw *hw, u32 changed)
 		dev->txpower_conf = hw->conf.power_level * 2;
 
 		if (test_bit(MT76_STATE_RUNNING, &dev->state))
-			mt76_phy_set_txpower(dev);
+			mt76_set_txpower(dev);
 	}
 
 	if (changed & IEEE80211_CONF_CHANGE_CHANNEL) {

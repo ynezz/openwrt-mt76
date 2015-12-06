@@ -123,9 +123,7 @@ int mt76_set_channel(struct mt76_dev *dev, struct cfg80211_chan_def *chandef)
 	tasklet_disable(&dev->pre_tbtt_tasklet);
 	cancel_delayed_work_sync(&dev->cal_work);
 
-	mt76_mac_stop(dev, true);
 	ret = mt76_phy_set_channel(dev, chandef);
-	mt76_mac_resume(dev);
 	tasklet_enable(&dev->pre_tbtt_tasklet);
 
 	return ret;

@@ -517,5 +517,14 @@ struct mt76_wcid_key {
 } __packed __aligned(4);
 
 void mt76x2_pre_tbtt_tasklet(unsigned long arg);
+void mt76x2_phy_set_txpower(struct mt76_dev *dev);
+void mt76x2_phy_calibrate(struct work_struct *work);
+
+void mt76x2_mac_stop(struct mt76_dev *dev, bool force);
+void mt76x2_mac_resume(struct mt76_dev *dev);
+
+int mt76x2_phy_start(struct mt76_dev *dev);
+void mt76x2_phy_set_txpower(struct mt76_dev *dev);
+int mt76x2_phy_set_channel(struct mt76_dev *dev, struct cfg80211_chan_def *chandef);
 
 #endif

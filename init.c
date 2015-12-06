@@ -17,91 +17,6 @@
 #include "mcu.h"
 #include "mt76x2.h"
 
-static bool
-wait_for_wpdma(struct mt76_dev *dev)
-{
-	return mt76_poll(dev, MT_WPDMA_GLO_CFG,
-			 MT_WPDMA_GLO_CFG_TX_DMA_BUSY |
-			 MT_WPDMA_GLO_CFG_RX_DMA_BUSY,
-			 0, 1000);
-}
-
-int mt76_mac_start(struct mt76_dev *dev)
-{
-	int i;
-
-	for (i = 0; i < 16; i++)
-		mt76_rr(dev, MT_TX_AGG_CNT(i));
-
-	for (i = 0; i < 16; i++)
-		mt76_rr(dev, MT_TX_STAT_FIFO);
-
-	memset(dev->aggr_stats, 0, sizeof(dev->aggr_stats));
-
-	mt76_wr(dev, MT_MAC_SYS_CTRL, MT_MAC_SYS_CTRL_ENABLE_TX);
-	wait_for_wpdma(dev);
-	udelay(50);
-
-	mt76_set(dev, MT_WPDMA_GLO_CFG,
-		 MT_WPDMA_GLO_CFG_TX_DMA_EN |
-		 MT_WPDMA_GLO_CFG_RX_DMA_EN);
-
-	mt76_clear(dev, MT_WPDMA_GLO_CFG, MT_WPDMA_GLO_CFG_TX_WRITEBACK_DONE);
-
-	mt76_wr(dev, MT_RX_FILTR_CFG, dev->rxfilter);
-
-	mt76_wr(dev, MT_MAC_SYS_CTRL,
-		MT_MAC_SYS_CTRL_ENABLE_TX |
-		MT_MAC_SYS_CTRL_ENABLE_RX);
-
-	mt76_irq_enable(dev, MT_INT_RX_DONE_ALL | MT_INT_TX_DONE_ALL | MT_INT_TX_STAT);
-
-	return 0;
-}
-
-void mt76_mac_stop(struct mt76_dev *dev, bool force)
-{
-	bool stopped = false;
-	u32 rts_cfg;
-	int i;
-
-	mt76_wr(dev, MT_MAC_SYS_CTRL, 0);
-
-	rts_cfg = mt76_rr(dev, MT_TX_RTS_CFG);
-	mt76_wr(dev, MT_TX_RTS_CFG, rts_cfg & ~MT_TX_RTS_CFG_RETRY_LIMIT);
-
-	/* Wait for MAC to become idle */
-	for (i = 0; i < 300; i++) {
-		if (mt76_rr(dev, MT_MAC_STATUS) &
-		    (MT_MAC_STATUS_RX | MT_MAC_STATUS_TX))
-			continue;
-
-		if (mt76_rr(dev, MT_BBP(IBI, 12)))
-			continue;
-
-		stopped = true;
-		break;
-	}
-
-	if (force && !stopped) {
-		mt76_set(dev, MT_BBP(CORE, 4), BIT(1));
-		mt76_clear(dev, MT_BBP(CORE, 4), BIT(1));
-
-		mt76_set(dev, MT_BBP(CORE, 4), BIT(0));
-		mt76_clear(dev, MT_BBP(CORE, 4), BIT(0));
-	}
-
-	mt76_wr(dev, MT_TX_RTS_CFG, rts_cfg);
-}
-
-void mt76_mac_resume(struct mt76_dev *dev)
-{
-	mt76_wr(dev, MT_MAC_SYS_CTRL,
-		MT_MAC_SYS_CTRL_ENABLE_TX |
-		MT_MAC_SYS_CTRL_ENABLE_RX);
-}
-
-
 void mt76_set_tx_ackto(struct mt76_dev *dev)
 {
 	u8 ackto, sifs, slottime = dev->slottime;
@@ -116,17 +31,8 @@ void mt76_set_tx_ackto(struct mt76_dev *dev)
 		       MT_TX_TIMEOUT_CFG_ACKTO, ackto);
 }
 
-void mt76_stop_hardware(struct mt76_dev *dev)
-{
-	cancel_delayed_work_sync(&dev->cal_work);
-	cancel_delayed_work_sync(&dev->mac_work);
-	mt76_mcu_set_radio_state(dev, false);
-	mt76_mac_stop(dev, false);
-}
-
 void mt76_cleanup(struct mt76_dev *dev)
 {
-	mt76_stop_hardware(dev);
 	mt76_dma_cleanup(dev);
 	mt76_mcu_cleanup(dev);
 }
@@ -440,7 +346,6 @@ int mt76_register_device(struct mt76_dev *dev)
 		goto fail;
 
 	INIT_LIST_HEAD(&dev->txwi_cache);
-	INIT_DELAYED_WORK(&dev->cal_work, mt76_phy_calibrate);
 
 	ret = ieee80211_register_hw(hw);
 	if (ret)
@@ -451,7 +356,7 @@ int mt76_register_device(struct mt76_dev *dev)
 	return 0;
 
 fail:
-	mt76_stop_hardware(dev);
+	mt76_hw_stop(dev);
 	return ret;
 }
 

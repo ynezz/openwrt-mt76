@@ -373,6 +373,47 @@ mt76_reset_wlan(struct mt76_dev *dev, bool enable)
 	mt76_set_wlan_state(dev, enable);
 }
 
+static bool
+wait_for_wpdma(struct mt76_dev *dev)
+{
+	return mt76_poll(dev, MT_WPDMA_GLO_CFG,
+			 MT_WPDMA_GLO_CFG_TX_DMA_BUSY |
+			 MT_WPDMA_GLO_CFG_RX_DMA_BUSY,
+			 0, 1000);
+}
+
+static void
+mt76x2_mac_start(struct mt76_dev *dev)
+{
+	int i;
+
+	for (i = 0; i < 16; i++)
+		mt76_rr(dev, MT_TX_AGG_CNT(i));
+
+	for (i = 0; i < 16; i++)
+		mt76_rr(dev, MT_TX_STAT_FIFO);
+
+	memset(dev->aggr_stats, 0, sizeof(dev->aggr_stats));
+
+	mt76_wr(dev, MT_MAC_SYS_CTRL, MT_MAC_SYS_CTRL_ENABLE_TX);
+	wait_for_wpdma(dev);
+	udelay(50);
+
+	mt76_set(dev, MT_WPDMA_GLO_CFG,
+		 MT_WPDMA_GLO_CFG_TX_DMA_EN |
+		 MT_WPDMA_GLO_CFG_RX_DMA_EN);
+
+	mt76_clear(dev, MT_WPDMA_GLO_CFG, MT_WPDMA_GLO_CFG_TX_WRITEBACK_DONE);
+
+	mt76_wr(dev, MT_RX_FILTR_CFG, dev->rxfilter);
+
+	mt76_wr(dev, MT_MAC_SYS_CTRL,
+		MT_MAC_SYS_CTRL_ENABLE_TX |
+		MT_MAC_SYS_CTRL_ENABLE_RX);
+
+	mt76_irq_enable(dev, MT_INT_RX_DONE_ALL | MT_INT_TX_DONE_ALL | MT_INT_TX_STAT);
+}
+
 static int
 mt76x2_init_hardware(struct mt76_dev *dev)
 {
@@ -426,15 +467,13 @@ mt76x2_init_hardware(struct mt76_dev *dev)
 		return ret;
 
 	set_bit(MT76_STATE_INITIALIZED, &dev->state);
-	ret = mt76_mac_start(dev);
-	if (ret)
-		return ret;
+	mt76x2_mac_start(dev);
 
 	ret = mt76_mcu_init(dev);
 	if (ret)
 		return ret;
 
-	mt76_mac_stop(dev, false);
+	mt76x2_mac_stop(dev, false);
 	dev->rxfilter = mt76_rr(dev, MT_RX_FILTR_CFG);
 
 	/* Fix up ASPM configuration */
@@ -468,8 +507,70 @@ mt76x2_mac_work(struct work_struct *work)
 				     MT_CALIBRATE_INTERVAL);
 }
 
+void
+mt76x2_mac_resume(struct mt76_dev *dev)
+{
+	mt76_wr(dev, MT_MAC_SYS_CTRL,
+		MT_MAC_SYS_CTRL_ENABLE_TX |
+		MT_MAC_SYS_CTRL_ENABLE_RX);
+}
+
+
+void
+mt76x2_mac_stop(struct mt76_dev *dev, bool force)
+{
+	bool stopped = false;
+	u32 rts_cfg;
+	int i;
+
+	mt76_wr(dev, MT_MAC_SYS_CTRL, 0);
+
+	rts_cfg = mt76_rr(dev, MT_TX_RTS_CFG);
+	mt76_wr(dev, MT_TX_RTS_CFG, rts_cfg & ~MT_TX_RTS_CFG_RETRY_LIMIT);
+
+	/* Wait for MAC to become idle */
+	for (i = 0; i < 300; i++) {
+		if (mt76_rr(dev, MT_MAC_STATUS) &
+		    (MT_MAC_STATUS_RX | MT_MAC_STATUS_TX))
+			continue;
+
+		if (mt76_rr(dev, MT_BBP(IBI, 12)))
+			continue;
+
+		stopped = true;
+		break;
+	}
+
+	if (force && !stopped) {
+		mt76_set(dev, MT_BBP(CORE, 4), BIT(1));
+		mt76_clear(dev, MT_BBP(CORE, 4), BIT(1));
+
+		mt76_set(dev, MT_BBP(CORE, 4), BIT(0));
+		mt76_clear(dev, MT_BBP(CORE, 4), BIT(0));
+	}
+
+	mt76_wr(dev, MT_TX_RTS_CFG, rts_cfg);
+}
+
+static int mt76x2_hw_start(struct mt76_dev *dev)
+{
+	mt76x2_mac_start(dev);
+
+	return mt76x2_phy_start(dev);
+}
+
+static void mt76x2_hw_stop(struct mt76_dev *dev)
+{
+	mt76_mcu_set_radio_state(dev, false);
+	mt76x2_mac_stop(dev, false);
+}
+
 static const struct mt76_chip_ops chip_ops = {
 	.init_hardware = mt76x2_init_hardware,
+	.set_txpower = mt76x2_phy_set_txpower,
+	.set_channel = mt76x2_phy_set_channel,
+	.hw_start = mt76x2_hw_start,
+	.hw_stop = mt76x2_hw_stop,
 };
 
 int mt76x2_init_device(struct mt76_dev *dev)
@@ -487,6 +588,7 @@ int mt76x2_init_device(struct mt76_dev *dev)
 
 	kfifo_init(&dev->txstatus_fifo, status_fifo, fifo_size);
 
+	INIT_DELAYED_WORK(&dev->cal_work, mt76x2_phy_calibrate);
 	INIT_DELAYED_WORK(&dev->mac_work, mt76x2_mac_work);
 	tasklet_init(&dev->pre_tbtt_tasklet, mt76x2_pre_tbtt_tasklet,
 		     (unsigned long) dev);

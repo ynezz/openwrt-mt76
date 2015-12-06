@@ -163,6 +163,10 @@ struct mt76_rate_power {
 
 struct mt76_chip_ops {
 	int (*init_hardware)(struct mt76_dev *dev);
+	void (*set_txpower)(struct mt76_dev *dev);
+	int (*set_channel)(struct mt76_dev *dev, struct cfg80211_chan_def *chandef);
+	int (*hw_start)(struct mt76_dev *dev);
+	void (*hw_stop)(struct mt76_dev *dev);
 };
 
 struct mt76_dma_ops {
@@ -349,21 +353,19 @@ int mt76_init_device(struct mt76_dev *dev);
 int mt76x2_init_device(struct mt76_dev *dev);
 
 #define mt76_init_hardware(dev) dev->ops->init_hardware(dev)
+#define mt76_hw_start(dev) dev->ops->hw_start(dev)
+#define mt76_hw_stop(dev) dev->ops->hw_stop(dev)
 
 irqreturn_t mt76_irq_handler(int irq, void *dev_instance);
 void mt76_phy_power_on(struct mt76_dev *dev);
-void mt76_stop_hardware(struct mt76_dev *dev);
 int mt76_eeprom_init(struct mt76_dev *dev);
 int mt76_apply_calibration_data(struct mt76_dev *dev, int channel);
 void mt76_set_tx_ackto(struct mt76_dev *dev);
 
-int mt76_phy_start(struct mt76_dev *dev);
 int mt76_set_channel(struct mt76_dev *dev, struct cfg80211_chan_def *chandef);
-int mt76_phy_set_channel(struct mt76_dev *dev,
-			 struct cfg80211_chan_def *chandef);
+#define mt76_phy_set_channel(dev, cdef) dev->ops->set_channel(dev, cdef)
 int mt76_phy_get_rssi(struct mt76_dev *dev, s8 rssi, int chain);
-void mt76_phy_calibrate(struct work_struct *work);
-void mt76_phy_set_txpower(struct mt76_dev *dev);
+#define mt76_set_txpower(dev) dev->ops->set_txpower(dev)
 
 int mt76_mcu_init(struct mt76_dev *dev);
 int mt76_mcu_set_channel(struct mt76_dev *dev, u8 channel, u8 bw, u8 bw_index,
