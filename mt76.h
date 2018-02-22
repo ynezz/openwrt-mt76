@@ -85,7 +85,6 @@ struct mt76_queue {
 	struct mt76_queue_entry *entry;
 	struct mt76_desc *desc;
 
-	struct list_head swq;
 	int swq_queued;
 
 	u16 head;
@@ -149,7 +148,6 @@ struct mt76_wcid {
 };
 
 struct mt76_txq {
-	struct list_head list;
 	struct mt76_queue *hwq;
 	struct mt76_wcid *wcid;
 
@@ -410,7 +408,7 @@ void mt76_tx(struct mt76_dev *dev, struct ieee80211_sta *sta,
 	     struct mt76_wcid *wcid, struct sk_buff *skb);
 void mt76_txq_init(struct mt76_dev *dev, struct ieee80211_txq *txq);
 void mt76_txq_remove(struct mt76_dev *dev, struct ieee80211_txq *txq);
-void mt76_wake_tx_queue(struct ieee80211_hw *hw, struct ieee80211_txq *txq);
+void mt76_wake_tx_queue(struct ieee80211_hw *hw, u8 ac);
 void mt76_stop_tx_queues(struct mt76_dev *dev, struct ieee80211_sta *sta,
 			 bool send_bar);
 void mt76_txq_schedule(struct mt76_dev *dev, struct mt76_queue *hwq);
